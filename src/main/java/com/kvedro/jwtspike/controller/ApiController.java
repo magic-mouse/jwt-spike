@@ -1,7 +1,10 @@
 package com.kvedro.jwtspike.controller;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.kvedro.jwtspike.ObjectMapperService;
+import com.kvedro.jwtspike.Users;
+import com.kvedro.jwtspike.services.LoginDataUserMapperService;
+import com.kvedro.jwtspike.services.ObjectMapperService;
+import com.kvedro.jwtspike.services.UsersDataService;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,6 +25,11 @@ public class ApiController {
 
     @Autowired
     ObjectMapperService objectMapperService;
+    @Autowired
+    LoginDataUserMapperService loginDataUserMapperService;
+    @Autowired
+    UsersDataService usersDataService;
+
 
     @RequestMapping(value = "/jwt/{test}",method = RequestMethod.GET)
     public String jwtOut(@PathVariable String test){
@@ -33,16 +41,23 @@ public class ApiController {
         return Jwts.parser().setSigningKey(key).parseClaimsJws(jwt).getBody().getSubject();
     }
 
+    @RequestMapping(value = "/registeruser", method = RequestMethod.POST, consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Users> registerUser(@RequestBody LoginModel loginData){
+        Users userToRegister = loginDataUserMapperService.loginDataToUser(loginData);
+        Users registeredUser = usersDataService.save(userToRegister);
+        return new ResponseEntity<>(registeredUser, HttpStatus.OK);
+    }
+
     @RequestMapping(value = "/authenticate", method = RequestMethod.POST, consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity authenticate(@RequestBody LoginModel loginData){
+    public ResponseEntity<String> authenticate(@RequestBody LoginModel loginData){
         String loginDataJson = null;
         try {
             loginDataJson = objectMapperService.convertToJson(loginData);
         } catch (JsonProcessingException e) {
-            return new ResponseEntity("Spomething did not go as expected, due to security reasons the errormessage is hidden please contact the support if the problem continiues.", HttpStatus.BAD_REQUEST);
+            return new ResponseEntity<>("Spomething did not go as expected, due to security reasons the errormessage is hidden please contact the support if the problem continiues.", HttpStatus.BAD_REQUEST);
         }
         String status = "{\"token\":\"" + Jwts.builder().signWith(SignatureAlgorithm.HS256, key).setSubject(loginDataJson).compact() + "\"}";
-        return new ResponseEntity(status, HttpStatus.ACCEPTED);
+        return new ResponseEntity<>(status, HttpStatus.ACCEPTED);
 
     }
 
